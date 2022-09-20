@@ -1,0 +1,56 @@
+version: '3.8'
+
+networks:
+  local:
+    labels: &labels
+      - project=test
+
+services:
+  backend:
+    profiles:
+      - app
+    labels: *labels
+    container_name: ${APP_HOST}
+    networks:
+      local:
+        aliases:
+          - ${APP_HOST}
+    env_file: .env
+    build:
+      context: .
+      dockerfile: ./Dockerfile.local
+      labels: *labels
+      target: build
+    ports:
+      - "${APP_HTTP_PORT}:${APP_HTTP_PORT}"
+      - "${APP_DEBUG_PORT}:${APP_DEBUG_PORT}"
+    volumes:
+      - ./src:/app/src
+      # - ./nest-cli.json:/app/nest-cli.json
+      - ./tsconfig.json:/app/tsconfig.json
+      - ./tsconfig.build.json:/app/tsconfig.build.json
+    command: [ 'npm', 'run', 'start:debug' ]
+    restart: always
+
+  e2e:
+    profiles:
+      - test
+      - stage
+    labels: *labels
+    container_name: ${E2E_HOST}
+    networks:
+      local:
+        aliases:
+          - ${E2E_HOST}
+    env_file: .env
+    build:
+      context: ./e2e/
+      dockerfile: ./Dockerfile
+      labels: *labels
+      args:
+        - NODE_ENV=${NODE_ENV}
+    volumes:
+      - ./e2e/src:/app/src
+      - ./tsconfig.json:/app/tsconfig.json
+      - ./tsconfig.build.json:/app/tsconfig.build.json
+    command: [ "npm", "run", "test" ]
